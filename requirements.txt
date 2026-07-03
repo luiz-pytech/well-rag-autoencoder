@@ -1,0 +1,14 @@
+# --- Parte 2: Autoencoder / sinais (Gamma Ray) ---
+numpy
+pandas
+scipy
+scikit-learn
+torch
+matplotlib
+dlisio
+
+# --- Parte 1: RAG (usado nas próximas etapas) ---
+# sentence-transformers
+# faiss-cpu
+# chromadb
+# rank-bm25

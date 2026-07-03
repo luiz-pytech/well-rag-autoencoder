@@ -1,0 +1,27 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Dados (brutos e processados) - ficam locais/pendrive, não vão para o git
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Jupyter
+*.ipynb_checkpoints
+
+# Outputs de execução
+*.log
+
+# Editor / IDE
+.vscode/
+.idea/
+
+# SO
+.DS_Store
+Thumbs.db
