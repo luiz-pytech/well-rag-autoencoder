@@ -6,9 +6,16 @@ scikit-learn
 torch
 matplotlib
 dlisio
+jupyter
+ipykernel
 
-# --- Parte 1: RAG (usado nas próximas etapas) ---
-# sentence-transformers
-# faiss-cpu
+# --- Parte 1: RAG ---
+pymupdf
+pytesseract
+pillow
+sentence-transformers
+faiss-cpu
+rank-bm25
+openai
+python-dotenv
 # chromadb
-# rank-bm25

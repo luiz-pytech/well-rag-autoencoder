@@ -3,6 +3,12 @@
 venv/
 env/
 
+# Dados do Tesseract OCR (baixados localmente, não vão para o git)
+.tessdata/
+
+# Chaves de API e segredos
+.env
+
 # Dados (brutos e processados) - ficam locais/pendrive, não vão para o git
 data/
 

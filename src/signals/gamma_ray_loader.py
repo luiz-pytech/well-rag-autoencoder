@@ -18,6 +18,14 @@ import pandas as pd
 
 GAMMA_RAY_MNEMONICS = ("GR", "GRC", "SGR", "CGR", "ECGR", "GRD", "HGR")
 
+# Espaçamento típico de amostragem de um perfil Gamma Ray convencional (em metros).
+# Ferramentas de imagem/alta resolução (ex.: CAST, acústica) amostram na casa de
+# milímetros e às vezes carregam um canal auxiliar com nome parecido com GR — sem
+# esse filtro, o critério de "mais amostras válidas" as escolhe por engano, já que
+# naturalmente têm muito mais pontos no mesmo intervalo de profundidade.
+MIN_DEPTH_STEP_M = 0.02
+MAX_DEPTH_STEP_M = 0.60
+
 # Fatores de conversão para metros. DLIS registra a unidade real da ferramenta no
 # canal de índice (ex.: "m", "0.1 in", "ft") — não dá para assumir metros direto.
 _DEPTH_UNIT_TO_METERS = {
@@ -67,8 +75,13 @@ def load_from_dlis(path: str | Path) -> GammaRayCurve:
     vários frames, cada um com seu próprio canal de índice (profundidade) — o nome
     desse canal não segue um mnemônico fixo (ex.: "INDEX023", "INDEX025"...), então
     usamos `frame.index` (fornecido pelo dlisio) em vez de tentar adivinhar por nome.
-    Quando há mais de um frame com um canal Gamma Ray, escolhe o de maior número de
-    amostras válidas (mais provável de ser a corrida principal/mais completa).
+
+    Quando há mais de um frame com um canal Gamma Ray, descarta os que têm espaçamento
+    de amostragem fora da faixa típica de um GR convencional (MIN/MAX_DEPTH_STEP_M) —
+    isso evita escolher por engano ferramentas de imagem/alta resolução (ex.: CAST,
+    acústica) que amostram na casa de milímetros e às vezes carregam um canal auxiliar
+    com nome parecido com GR. Entre os candidatos restantes, escolhe o de maior número
+    de amostras válidas (mais provável de ser a corrida principal/mais completa).
     """
     try:
         from dlisio import dlis
@@ -81,8 +94,14 @@ def load_from_dlis(path: str | Path) -> GammaRayCurve:
     best: GammaRayCurve | None = None
     best_n_valid = -1
     last_error: Exception | None = None
+    rejected_sampling: list[float] = []
 
-    with dlis.load(str(path)) as files:
+    try:
+        dlis_handle = dlis.load(str(path))
+    except Exception as exc:
+        raise ValueError(f"Não foi possível abrir {path} como DLIS (arquivo corrompido ou formato não suportado): {exc}") from exc
+
+    with dlis_handle as files:
         for logical_file in files:
             for frame in logical_file.frames:
                 channel_names = [ch.name for ch in frame.channels]
@@ -101,6 +120,12 @@ def load_from_dlis(path: str | Path) -> GammaRayCurve:
                     last_error = exc
                     continue
 
+                depth_sorted = np.sort(depth)
+                step = float(np.median(np.diff(depth_sorted))) if len(depth_sorted) > 1 else 0.0
+                if not (MIN_DEPTH_STEP_M <= step <= MAX_DEPTH_STEP_M):
+                    rejected_sampling.append(step)
+                    continue
+
                 n_valid = int(np.sum(~np.isnan(gamma_ray) & (gamma_ray > -999.0)))
                 if n_valid <= best_n_valid:
                     continue
@@ -116,8 +141,14 @@ def load_from_dlis(path: str | Path) -> GammaRayCurve:
 
     if best is None:
         detail = f" Último erro: {last_error}" if last_error else ""
+        if rejected_sampling:
+            detail += (
+                f" {len(rejected_sampling)} frame(s) com canal GR-like descartado(s) por "
+                f"amostragem fora de [{MIN_DEPTH_STEP_M}, {MAX_DEPTH_STEP_M}] m "
+                f"(passos encontrados: {[round(s, 4) for s in rejected_sampling]})."
+            )
         raise ValueError(
-            f"Nenhum frame com canal Gamma Ray encontrado em {path}.{detail}"
+            f"Nenhum frame com canal Gamma Ray convencional encontrado em {path}.{detail}"
         )
     return best
 
